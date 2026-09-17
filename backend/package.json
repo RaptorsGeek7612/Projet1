@@ -8,6 +8,8 @@
     "start": "ponder start",
     "codegen": "ponder codegen",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:contracts": "vitest run --config vitest.contracts.config.ts",
     "compile:contracts": "hardhat compile",
     "deploy:sepolia": "tsx scripts/deploy.ts"
   },
@@ -16,7 +18,7 @@
     "@openzeppelin/contracts-upgradeable": "^4.8.3",
     "ethers": "^6.13.0",
     "hono": "^4.6.0",
-    "ponder": "^0.11.0",
+    "ponder": "^0.17.0",
     "viem": "^2.21.0"
   },
   "devDependencies": {
@@ -24,6 +26,7 @@
     "dotenv": "^16.4.0",
     "hardhat": "^2.22.0",
     "tsx": "^4.19.0",
-    "typescript": "^5.6.0"
+    "typescript": "^5.6.0",
+    "vitest": "^5.0.1"
   }
 }

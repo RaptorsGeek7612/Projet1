@@ -69,6 +69,12 @@ npm run deploy:sepolia   # lit SEPOLIA_RPC_URL et DEPLOYER_PRIVATE_KEY depuis .e
 
 `scripts/deploy.ts` déploie la suite complète depuis zéro ; `scripts/finish-deploy.ts` a servi à reprendre après le pause-by-default du token (voir « Points d'attention »).
 
+### Conformité KYC réelle
+
+`scripts/add-kyc-claims.ts` a ajouté après coup une exigence de claim réelle sur la suite déjà déployée (`ClaimIssuer` : `0xaB5EF0a0c0171BDE8aFd512c815EcfA4A624a654`, topic `KYC_APPROVED`) : `isVerified()` ne renvoie plus trivialement `true`, il vérifie un claim signé par un émetteur de confiance. Le déployeur porte ce claim ; le second porteur (wallet jetable du déploiement initial, clé privée jamais conservée) n'en a pas, donc `isVerified(second porteur) = false` — un cas réel d'anomalie, pas simulé.
+
+Effet de bord assumé, pas caché : `Token.transfer()`/`mint()` ne vérifient que le **destinataire**, jamais l'émetteur. Le second porteur garde son solde existant et peut toujours l'envoyer ; il ne peut simplement plus en **recevoir** de nouveau sans claim.
+
 ## Points d'attention
 
 **Le pays est un `uint16` ISO 3166-1 numérique**, pas un code alpha-2. La France est `250`, pas `"FR"`. C'est une confusion fréquente au moment de configurer un module de restriction par pays. La table de correspondance est dans `src/countries.ts`, partielle et orientée UE — complète-la selon tes juridictions.
@@ -81,10 +87,26 @@ npm run deploy:sepolia   # lit SEPOLIA_RPC_URL et DEPLOYER_PRIVATE_KEY depuis .e
 
 **Le token T-REX démarre en pause.** `mint()` passe (pas de garde `whenNotPaused`), mais `transfer()` est bloqué jusqu'à un `unpause()` explicite par un agent. `scripts/deploy.ts` le fait automatiquement après le mint initial.
 
+**Ponder 0.11.44 avait un bug connu de gestion du shutdown.** En dev, un rechargement à chaud pouvait tomber sur un événement `finalize` en plein traitement et faire planter tout le process avec une `ShutdownError` (deux occurrences observées ici). Corrigé upstream entre la 0.11 et la 0.17 (voir les PR ponder-sh/ponder #1494 et #2252) — mis à jour, plus aucune occurrence depuis.
+
+## Tests
+
+```bash
+npm run test             # logique pure (backend/src/logic.ts) — vitest, pas de réseau
+npm run test:contracts   # comportement des contrats — nœud Hardhat local, ~5s
+```
+
+`test:contracts` démarre et arrête un nœud Hardhat local (voir `test/contracts/setup.ts`) et vérifie, contre un vrai déploiement (pas un mock), les trois hypothèses dont dépend l'indexeur : le token démarre en pause, `registerIdentity()` n'émet pas de `CountryUpdated`, `setAddressFrozen()` réémet `AddressFrozen` même sans changement d'état. Si une future version du contrat change l'un de ces comportements, ce test échoue — pas seulement l'indexeur en silence.
+
+> Piège rencontré en écrivant ce test : `ethers` v6 met en cache chaque lecture RPC (dont `getTransactionCount`) pendant 250ms par défaut (`cacheTimeout`). Hardhat mine en quelques millisecondes : sans `cacheTimeout: -1` sur le provider, une lecture de nonce juste après une transaction confirmée renvoie une valeur périmée, et la transaction suivante réutilise un nonce déjà consommé.
+
 ## État
 
-- Typecheck **vert**, `ponder codegen` validé contre Ponder 0.11.44
+- Typecheck **vert**, `ponder codegen` validé contre Ponder 0.17.10
 - **Validé contre un déploiement réel** sur Sepolia (voir « Déploiement de test sur Sepolia ») : les handlers ont tourné contre de vrais `Transfer`, `IdentityRegistered`, `TokensFrozen`
+- **Conformité KYC réelle** en place (voir « Conformité KYC réelle ») : `isVerified()` dépend d'un vrai claim signé, plus d'un simple enregistrement d'identité
+- 18 tests unitaires + 5 tests de contrats, tous verts (`npm test`, `npm run test:contracts`)
+- CI GitHub Actions (`.github/workflows/ci.yml`) : typecheck + compile + tests, backend et frontend
 - Les agrégats par pays sont maintenus au fil de l'eau ; sur un registre chargé, un job de recalcul périodique serait plus sûr qu'une accumulation de deltas
 
 ## Suites possibles

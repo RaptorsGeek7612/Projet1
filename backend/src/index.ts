@@ -1,7 +1,13 @@
 import { ponder } from "ponder:registry";
 import schema from "ponder:schema";
-import { decodeFunctionData } from "viem";
-import { IdentityRegistryAbi } from "../abis/trex";
+import { TokenAbi } from "../abis/trex";
+import {
+  classifyBalanceTransition,
+  classifyFreezeTransition,
+  computeCountryMove,
+  decodeRegisteredCountry,
+  eventId,
+} from "./logic";
 
 const ZERO = "0x0000000000000000000000000000000000000000" as const;
 
@@ -19,10 +25,6 @@ const ZERO = "0x0000000000000000000000000000000000000000" as const;
  * doit détecter.
  */
 
-function eventId(ev: { transaction: { hash: string }; log: { logIndex: number } }) {
-  return `${ev.transaction.hash}-${ev.log.logIndex}`;
-}
-
 /** Applique un delta de solde et maintient tous les compteurs dérivés. */
 async function applyDelta(
   context: any,
@@ -35,10 +37,7 @@ async function applyDelta(
 
   const before = await context.db.find(schema.holder, { address });
   const previous = before?.balance ?? 0n;
-  const next = previous + delta;
-
-  const becameHolder = previous === 0n && next > 0n;
-  const leftRegister = previous > 0n && next === 0n;
+  const { next, becameHolder, leftRegister } = classifyBalanceTransition(previous, delta);
 
   await context.db
     .insert(schema.holder)
@@ -96,10 +95,33 @@ async function applyDelta(
 // Token
 // ---------------------------------------------------------------------------
 
+/**
+ * name/symbol/decimals ne changent jamais après déploiement : un seul appel
+ * RPC suffit, au premier événement vu pour ce token. Le garde sur `name`
+ * évite de refaire ces trois lectures à chaque Transfer.
+ */
+async function ensureTokenMetadata(context: any, token: `0x${string}`) {
+  const existing = await context.db.find(schema.tokenState, { address: token });
+  if (existing?.name != null) return;
+
+  const [name, symbol, decimals] = await Promise.all([
+    context.client.readContract({ abi: TokenAbi, address: token, functionName: "name" }),
+    context.client.readContract({ abi: TokenAbi, address: token, functionName: "symbol" }),
+    context.client.readContract({ abi: TokenAbi, address: token, functionName: "decimals" }),
+  ]);
+
+  await context.db
+    .insert(schema.tokenState)
+    .values({ address: token, name, symbol, decimals })
+    .onConflictDoUpdate(() => ({ name, symbol, decimals }));
+}
+
 ponder.on("Token:Transfer", async ({ event, context }) => {
   const { from, to, value } = event.args;
   const ts = Number(event.block.timestamp);
   const token = event.log.address as `0x${string}`;
+
+  await ensureTokenMetadata(context, token);
 
   const kind = from === ZERO ? "mint" : to === ZERO ? "burn" : "transfer";
 
@@ -150,19 +172,19 @@ ponder.on("Token:AddressFrozen", async ({ event, context }) => {
   // qui gèle une adresse déjà gelée). Sans ce garde-fou, frozenHolderCount
   // dérive à chaque appel redondant au lieu de suivre une vraie transition.
   const before = await context.db.find(schema.holder, { address: userAddress });
-  const wasFrozen = before?.isFrozen ?? false;
+  const { changed, step } = classifyFreezeTransition(before?.isFrozen ?? false, isFrozen);
 
   await context.db
     .insert(schema.holder)
     .values({ address: userAddress, isFrozen })
     .onConflictDoUpdate(() => ({ isFrozen }));
 
-  if (wasFrozen !== isFrozen) {
+  if (changed) {
     await context.db
       .insert(schema.tokenState)
-      .values({ address: token, frozenHolderCount: isFrozen ? 1 : 0 })
+      .values({ address: token, frozenHolderCount: step > 0 ? 1 : 0 })
       .onConflictDoUpdate((row: any) => ({
-        frozenHolderCount: Math.max(0, row.frozenHolderCount + (isFrozen ? 1 : -1)),
+        frozenHolderCount: Math.max(0, row.frozenHolderCount + step),
       }));
   }
 });
@@ -256,30 +278,6 @@ ponder.on("Token:Unpaused", async ({ event, context }) => {
 // IdentityRegistry
 // ---------------------------------------------------------------------------
 
-/**
- * Décode le calldata d'un appel à registerIdentity() ou batchRegisterIdentity()
- * pour en extraire le pays de `investorAddress`, faute d'événement qui le porte.
- * Retourne null si le calldata ne correspond à aucune des deux signatures
- * (ex. appel via un contrat intermédiaire dont on ne peut pas décoder l'entrée).
- */
-function decodeRegisteredCountry(input: `0x${string}`, investorAddress: `0x${string}`): number | null {
-  try {
-    const decoded = decodeFunctionData({ abi: IdentityRegistryAbi, data: input });
-    if (decoded.functionName === "registerIdentity") {
-      const [, , country] = decoded.args;
-      return Number(country);
-    }
-    if (decoded.functionName === "batchRegisterIdentity") {
-      const [addresses, , countries] = decoded.args;
-      const index = addresses.findIndex((a) => a.toLowerCase() === investorAddress.toLowerCase());
-      return index === -1 ? null : Number(countries[index]);
-    }
-  } catch {
-    // calldata d'un appel qu'on ne sait pas décoder (ex. via un contrat intermédiaire)
-  }
-  return null;
-}
-
 ponder.on("IdentityRegistry:IdentityRegistered", async ({ event, context }) => {
   const { investorAddress, identity } = event.args;
   await context.db.insert(schema.identityEvent).values({
@@ -333,23 +331,24 @@ async function setHolderCountry(context: any, address: `0x${string}`, c: number)
     .values({ address, country: c })
     .onConflictDoUpdate(() => ({ country: c }));
 
-  // Déplacer le porteur d'un pays à l'autre dans les agrégats.
-  if (before && before.country != null && before.country !== c && before.balance > 0n) {
+  const move = computeCountryMove(before, c);
+
+  if (move.from) {
     await context.db
       .insert(schema.countryStat)
-      .values({ country: before.country, holderCount: 0, balance: 0n })
+      .values({ country: move.from.country, holderCount: 0, balance: 0n })
       .onConflictDoUpdate((row: any) => ({
         holderCount: Math.max(0, row.holderCount - 1),
-        balance: row.balance > before.balance ? row.balance - before.balance : 0n,
+        balance: row.balance > move.from!.balance ? row.balance - move.from!.balance : 0n,
       }));
   }
-  if (before && before.balance > 0n && before.country !== c) {
+  if (move.to) {
     await context.db
       .insert(schema.countryStat)
-      .values({ country: c, holderCount: 1, balance: before.balance })
+      .values({ country: move.to.country, holderCount: 1, balance: move.to.balance })
       .onConflictDoUpdate((row: any) => ({
         holderCount: row.holderCount + 1,
-        balance: row.balance + before.balance,
+        balance: row.balance + move.to!.balance,
       }));
   }
 }
