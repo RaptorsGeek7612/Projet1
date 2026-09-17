@@ -1,59 +1,105 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useAccount, useConnect, useDisconnect } from "wagmi";
+import { useQuery } from "@tanstack/react-query";
+import { fetchStats } from "@/lib/registry";
+import { LogoMark } from "@/components/logo";
+import { WalletChip } from "@/components/wallet-chip";
+import { StatTiles } from "@/components/stat-tiles";
 import { RegistryTable } from "./registry-table";
 
-export default function Home() {
-  const { address, isConnected } = useAccount();
-  const { connect, connectors } = useConnect();
-  const { disconnect } = useDisconnect();
-
-  // wagmi restaure la connexion précédente depuis le stockage local, ce qui
-  // diffère forcément du rendu serveur (jamais connecté) : sans ce garde-fou,
-  // React lève un mismatch d'hydratation sur ce bloc.
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+function NetworkBadge() {
+  const { data: stats } = useQuery({
+    queryKey: ["stats"],
+    queryFn: fetchStats,
+    refetchInterval: 5000,
+  });
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-8 bg-zinc-50 px-6 font-sans dark:bg-black">
-      <div className="flex flex-col items-center gap-2 text-center">
-        <h1 className="text-3xl font-semibold tracking-tight text-black dark:text-zinc-50">
-          Registre de porteurs T-REX
-        </h1>
-        <p className="max-w-md text-zinc-600 dark:text-zinc-400">
-          Interface du registre de porteurs ERC-3643, alimentée par l&apos;indexeur
-          Ponder du dossier <code>backend</code>.
-        </p>
-      </div>
-
-      {!mounted ? null : isConnected ? (
-        <div className="flex flex-col items-center gap-3">
-          <p className="font-mono text-sm text-zinc-700 dark:text-zinc-300">
-            {address}
-          </p>
-          <button
-            onClick={() => disconnect()}
-            className="rounded-full border border-black/[.08] px-5 py-2 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-white/[.08]"
-          >
-            Déconnecter
-          </button>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-3">
-          {connectors.map((connector) => (
-            <button
-              key={connector.uid}
-              onClick={() => connect({ connector })}
-              className="rounded-full bg-foreground px-5 py-2 text-sm font-medium text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc]"
-            >
-              Connecter {connector.name}
-            </button>
-          ))}
-        </div>
+    <span
+      className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium"
+      style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}
+    >
+      <span className="h-1.5 w-1.5 rounded-full pulse-dot" style={{ background: "var(--status-good)" }} />
+      Sepolia
+      {stats?.lastIndexedBlock != null && (
+        <span className="tabular" style={{ color: "var(--text-muted)" }}>
+          · bloc {stats.lastIndexedBlock.toLocaleString("fr-FR")}
+        </span>
       )}
+    </span>
+  );
+}
 
-      <RegistryTable />
+export default function Home() {
+  return (
+    <div className="relative flex flex-1 flex-col" style={{ background: "var(--bg)" }}>
+      <div
+        className="pointer-events-none fixed inset-0 -z-10"
+        style={{
+          background:
+            "radial-gradient(60rem 40rem at 15% -10%, var(--glow-1), transparent 60%), radial-gradient(50rem 35rem at 110% 10%, var(--glow-2), transparent 60%)",
+        }}
+      />
+
+      <header
+        className="flex flex-wrap items-center justify-between gap-4 border-b px-6 py-5 sm:px-10"
+        style={{ borderColor: "var(--border)" }}
+      >
+        <div className="flex items-center gap-3">
+          <LogoMark className="h-8 w-8" />
+          <div>
+            <h1 className="text-sm font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
+              Registre des porteurs
+            </h1>
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+              Conformité ERC-3643 · T-REX
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <NetworkBadge />
+          <WalletChip />
+        </div>
+      </header>
+
+      <main className="flex flex-1 flex-col gap-8 px-6 py-10 sm:px-10">
+        <div className="flex flex-col gap-2">
+          <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl" style={{ color: "var(--text-primary)" }}>
+            Qui détient quoi, en temps réel.
+          </h2>
+          <p className="max-w-2xl text-sm" style={{ color: "var(--text-secondary)" }}>
+            Reconstruit depuis la chaîne par l&apos;indexeur Ponder du dossier{" "}
+            <code className="rounded px-1 py-0.5 font-mono text-xs" style={{ background: "var(--surface-2)" }}>
+              backend
+            </code>{" "}
+            — soldes, gels et identités, sans jamais lire l&apos;état on-chain à la demande.
+          </p>
+        </div>
+
+        <StatTiles />
+
+        <section
+          className="flex flex-col gap-4 rounded-2xl border p-5 sm:p-6"
+          style={{ borderColor: "var(--border)", background: "var(--surface)" }}
+        >
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+              Porteurs
+            </h3>
+            <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+              Rafraîchi toutes les 5s
+            </span>
+          </div>
+          <RegistryTable />
+        </section>
+      </main>
+
+      <footer
+        className="border-t px-6 py-4 text-center text-xs sm:px-10"
+        style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
+      >
+        Données dérivées des événements on-chain — jamais lues on-chain à la demande.
+      </footer>
     </div>
   );
 }

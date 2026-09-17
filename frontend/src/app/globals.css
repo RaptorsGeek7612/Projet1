@@ -1,26 +1,92 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+  --bg: #f7f8fb;
+  --surface: #ffffff;
+  --surface-2: #f1f3f8;
+  --border: rgba(11, 15, 25, 0.09);
+  --text-primary: #0b0f19;
+  --text-secondary: #52586b;
+  --text-muted: #8b90a0;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --accent: #4f46e5;
+  --accent-soft: rgba(79, 70, 229, 0.1);
+  --accent-2: #0ca678;
+  --accent-2-soft: rgba(12, 166, 120, 0.12);
+
+  --status-good: #0ca30c;
+  --status-warning: #b8790a;
+  --status-critical: #d03b3b;
+
+  --cat-1: #2a78d6;
+  --cat-2: #eb6834;
+  --cat-3: #1baf7a;
+
+  --glow-1: rgba(79, 70, 229, 0.16);
+  --glow-2: rgba(12, 166, 120, 0.12);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --bg: #060810;
+    --surface: #0d111c;
+    --surface-2: #131829;
+    --border: rgba(255, 255, 255, 0.08);
+    --text-primary: #f4f5f8;
+    --text-secondary: #a7acc0;
+    --text-muted: #656b80;
+
+    --accent: #818cf8;
+    --accent-soft: rgba(129, 140, 248, 0.14);
+    --accent-2: #34d399;
+    --accent-2-soft: rgba(52, 211, 153, 0.14);
+
+    --status-good: #34d399;
+    --status-warning: #fab219;
+    --status-critical: #f87171;
+
+    --cat-1: #3987e5;
+    --cat-2: #d95926;
+    --cat-3: #199e70;
+
+    --glow-1: rgba(129, 140, 248, 0.18);
+    --glow-2: rgba(52, 211, 153, 0.1);
   }
 }
 
+@theme inline {
+  --color-background: var(--bg);
+  --color-foreground: var(--text-primary);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+* {
+  border-color: var(--border);
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--font-geist-sans), system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(0.85);
+  }
+}
+
+.pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
 }

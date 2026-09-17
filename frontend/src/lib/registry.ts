@@ -14,9 +14,27 @@ export type Holder = {
   transferCount: number;
 };
 
+export type TokenStats = {
+  token: string;
+  name: string | null;
+  symbol: string | null;
+  decimals: number | null;
+  totalSupply: string;
+  holderCount: number;
+  frozenHolderCount: number;
+  isPaused: boolean;
+  lastIndexedBlock: number | null;
+};
+
 export async function fetchRegistry(): Promise<{ holders: Holder[]; count: number }> {
   const res = await fetch(`${REGISTRY_API_URL}/registry`);
   if (!res.ok) throw new Error(`registry fetch failed: ${res.status}`);
+  return res.json();
+}
+
+export async function fetchStats(): Promise<TokenStats> {
+  const res = await fetch(`${REGISTRY_API_URL}/stats`);
+  if (!res.ok) throw new Error(`stats fetch failed: ${res.status}`);
   return res.json();
 }
 
