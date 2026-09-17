@@ -119,9 +119,9 @@ contract ModularCompliance is IModularCompliance, OwnableUpgradeable, MCStorage 
             require(module.canComplianceBind(address(this)), "compliance is not suitable for binding to the module");
         }
 
-        module.bindCompliance(address(this));
         _modules.push(_module);
         _moduleBound[_module] = true;
+        module.bindCompliance(address(this));
         emit ModuleAdded(_module);
     }
 
@@ -134,10 +134,10 @@ contract ModularCompliance is IModularCompliance, OwnableUpgradeable, MCStorage 
         uint256 length = _modules.length;
         for (uint256 i = 0; i < length; i++) {
             if (_modules[i] == _module) {
-                IModule(_module).unbindCompliance(address(this));
                 _modules[i] = _modules[length - 1];
                 _modules.pop();
                 _moduleBound[_module] = false;
+                IModule(_module).unbindCompliance(address(this));
                 emit ModuleRemoved(_module);
                 break;
             }
