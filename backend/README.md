@@ -47,6 +47,28 @@ L'interface est sur `http://localhost:42069`. En développement, Ponder utilise 
 
 > `START_BLOCK` doit être le bloc de déploiement du token. Laisser 0 épuise le quota d'un RPC gratuit avant d'atteindre le premier `mint`.
 
+## Déploiement de test sur Sepolia
+
+Une suite T-REX minimale (registres + token, sans claim topic ni module de conformité) a été déployée pour valider les handlers contre de vrais événements :
+
+| Contrat | Adresse |
+|---|---|
+| Token (RPD) | `0x2C75bB41c4B90Da410D39D7413304922Ddb497D9` |
+| IdentityRegistry | `0xafe7308c10F26C6cC5e0d83938dc10D421704c23` |
+
+- Bloc de déploiement (`START_BLOCK`) : `11722735`
+- Réseau : Sepolia (chain id `11155111`)
+- Deux porteurs réels : un premier avec 900 RPD (France, `250`), un second avec 100 RPD dont 20 gelés partiellement (États-Unis, `840`)
+
+Les sources T-REX + ONCHAINID sont vendorisées dans `src/contracts/` (compilées en solc `0.8.35` via Hardhat) et le déploiement se refait avec :
+
+```bash
+npm run compile:contracts
+npm run deploy:sepolia   # lit SEPOLIA_RPC_URL et DEPLOYER_PRIVATE_KEY depuis .env (pas .env.local)
+```
+
+`scripts/deploy.ts` déploie la suite complète depuis zéro ; `scripts/finish-deploy.ts` a servi à reprendre après le pause-by-default du token (voir « Points d'attention »).
+
 ## Points d'attention
 
 **Le pays est un `uint16` ISO 3166-1 numérique**, pas un code alpha-2. La France est `250`, pas `"FR"`. C'est une confusion fréquente au moment de configurer un module de restriction par pays. La table de correspondance est dans `src/countries.ts`, partielle et orientée UE — complète-la selon tes juridictions.
@@ -55,10 +77,14 @@ L'interface est sur `http://localhost:42069`. En développement, Ponder utilise 
 
 **Une radiation d'identité ne supprime pas la ligne du porteur.** Un investisseur retiré du registre d'identités peut conserver un solde. C'est légitime et c'est précisément l'anomalie que `/registry/anomalies` fait remonter.
 
+**`registerIdentity()` n'émet aucun événement portant le pays.** Le contrat écrit `_country` dans l'`IdentityRegistryStorage` mais seul `IdentityRegistered(address,identity)` sort — pas de `CountryUpdated`. Le handler décode donc le calldata de la transaction (`registerIdentity`/`batchRegisterIdentity`) pour le récupérer. Sans ça, tout porteur fraîchement enregistré ressortirait à tort dans `holdersWithoutCountry`.
+
+**Le token T-REX démarre en pause.** `mint()` passe (pas de garde `whenNotPaused`), mais `transfer()` est bloqué jusqu'à un `unpause()` explicite par un agent. `scripts/deploy.ts` le fait automatiquement après le mint initial.
+
 ## État
 
 - Typecheck **vert**, `ponder codegen` validé contre Ponder 0.11.44
-- **Non exécuté contre un déploiement réel.** Il faut un token T-REX sur Sepolia pour valider les handlers de bout en bout
+- **Validé contre un déploiement réel** sur Sepolia (voir « Déploiement de test sur Sepolia ») : les handlers ont tourné contre de vrais `Transfer`, `IdentityRegistered`, `TokensFrozen`
 - Les agrégats par pays sont maintenus au fil de l'eau ; sur un registre chargé, un job de recalcul périodique serait plus sûr qu'une accumulation de deltas
 
 ## Suites possibles
