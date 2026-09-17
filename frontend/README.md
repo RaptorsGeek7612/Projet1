@@ -1,36 +1,55 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Registre des Porteurs — Frontend
 
-## Getting Started
+Dashboard Next.js qui affiche, en lecture seule, le registre des porteurs d'un token ERC-3643 (T-REX) tel que reconstruit par l'indexeur (`../backend`). Pour l'usage de l'interface elle-même, voir [`../GUIDE-UTILISATEUR.md`](../GUIDE-UTILISATEUR.md) ; ce README couvre la partie technique.
 
-First, run the development server:
+## Ce que ça affiche
+
+- **Tuiles de synthèse** (`src/components/stat-tiles.tsx`) : encours total, nombre de porteurs, nombre de gels partiels, statut du token (actif/en pause).
+- **Tableau des porteurs** (`src/app/registry-table.tsx`) : adresse (lien Etherscan Sepolia + copie), juridiction (drapeau via `country-flag-icons`), solde, part gelée, solde transférable.
+- **Badge réseau** (`src/app/page.tsx`) : réseau (Sepolia) et dernier bloc indexé, pour prouver que les données ne sont pas figées.
+- **Connexion wallet** (`src/components/wallet-chip.tsx`, via `wagmi`) : optionnelle, la lecture du registre ne la nécessite pas.
+
+Tout est lu depuis l'API HTTP de l'indexeur (`src/lib/registry.ts`) et rafraîchi toutes les 5 secondes via React Query (`refetchInterval`), pas de WebSocket.
+
+## Démarrage
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Interface sur `http://localhost:3000`. Par défaut elle interroge l'indexeur sur `http://localhost:42069` (voir `../backend/README.md` pour le lancer) — assure-toi qu'il tourne, sinon le tableau affiche une erreur de connexion.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Variables d'environnement
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Variable | Rôle | Défaut |
+|---|---|---|
+| `NEXT_PUBLIC_REGISTRY_API_URL` | URL de base de l'API de l'indexeur | `http://localhost:42069` |
 
-## Learn More
+À définir en production (déploiement Vercel) pour pointer vers l'indexeur déployé (Railway).
 
-To learn more about Next.js, take a look at the following resources:
+## Stack
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- Next.js 16 (App Router), React 19, TypeScript strict
+- Tailwind CSS 4 pour le style, `next/font` (Geist + Fraunces) pour la typographie
+- `@tanstack/react-query` pour le fetch/cache/polling de l'API
+- `wagmi` + `viem` pour la connexion wallet (Sepolia / mainnet, connecteur `injected` uniquement)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Scripts
 
-## Deploy on Vercel
+```bash
+pnpm dev      # serveur de dev
+pnpm build    # build de prod (type-check les routes App Router au passage)
+pnpm start    # sert le build de prod
+pnpm lint     # eslint
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Le CI (`../.github/workflows/ci.yml`) lance `pnpm build` puis `pnpm exec tsc --noEmit` — dans cet ordre, car des types comme `LayoutProps<"/">` (routes typées) ne sont générés par Next.js que pendant le build.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Déploiement
+
+Vercel, projet lié via `.vercel/project.json`. Le déploiement est indépendant de celui du backend (Railway) ; seule la variable `NEXT_PUBLIC_REGISTRY_API_URL` les relie.
+
+## Note
+
+`frontend/AGENTS.md` (importé par `CLAUDE.md`) est régénéré automatiquement par `next dev` — ne pas le modifier à la main, il documente les éventuelles ruptures d'API de la version de Next.js installée.
