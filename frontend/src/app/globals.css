@@ -4,9 +4,9 @@
   --bg-1: #eeeef8;
   --bg-2: #dcdeed;
   --bg: var(--bg-2);
-  --surface: #f3e6c9;
-  --surface-tint: #e0c48a;
-  --surface-2: #f1f3f8;
+  --surface: #ede7fa;
+  --surface-tint: #d9cdf0;
+  --surface-2: #e2d8f2;
   --border: rgba(11, 15, 25, 0.09);
   --text-primary: #0b0f19;
   --text-secondary: #52586b;
@@ -21,6 +21,13 @@
   --status-warning: #b8790a;
   --status-critical: #d03b3b;
 
+  /* Fond plein pour les badges d'alerte (ex. gel partiel) : un lavis sur
+     --status-warning se noie dès que la carte porte elle-même une teinte
+     chaude saturée. Un remplissage solide reste lisible quelle que soit
+     la couleur de la carte sous lui. */
+  --chip-warning-bg: #a17d3f;
+  --chip-warning-text: #fff6e6;
+
   --cat-1: #2a78d6;
   --cat-2: #eb6834;
   --cat-3: #1baf7a;
@@ -30,8 +37,8 @@
   --glow-3: rgba(168, 85, 247, 0.08);
   --grid-line: rgba(11, 15, 25, 0.055);
   --grid-dot: rgba(11, 15, 25, 0.09);
-  --card-glow: rgba(79, 70, 229, 0.2);
-  --card-edge: rgba(79, 70, 229, 0.4);
+  --card-glow: rgba(79, 70, 229, 0.42);
+  --card-edge: rgba(79, 70, 229, 0.75);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -39,9 +46,9 @@
     --bg-1: #0c0e1e;
     --bg-2: #05060d;
     --bg: var(--bg-2);
-    --surface: #141833;
-    --surface-tint: #202555;
-    --surface-2: #131829;
+    --surface: #10132a;
+    --surface-tint: #171b3d;
+    --surface-2: #1c2145;
     --border: rgba(255, 255, 255, 0.08);
     --text-primary: #f4f5f8;
     --text-secondary: #a7acc0;
@@ -56,6 +63,9 @@
     --status-warning: #fab219;
     --status-critical: #f87171;
 
+    --chip-warning-bg: #82652f;
+    --chip-warning-text: #ffe3ad;
+
     --cat-1: #3987e5;
     --cat-2: #d95926;
     --cat-3: #199e70;
@@ -65,8 +75,8 @@
     --glow-3: rgba(196, 140, 255, 0.12);
     --grid-line: rgba(255, 255, 255, 0.045);
     --grid-dot: rgba(255, 255, 255, 0.09);
-    --card-glow: rgba(129, 140, 248, 0.26);
-    --card-edge: rgba(129, 140, 248, 0.45);
+    --card-glow: rgba(129, 140, 248, 0.5);
+    --card-edge: rgba(129, 140, 248, 0.85);
   }
 }
 
@@ -234,8 +244,8 @@ body {
   background: linear-gradient(160deg, var(--surface) 0%, var(--surface-tint) 100%);
   box-shadow:
     0 0 0 1px var(--border),
-    0 18px 48px -16px var(--card-glow),
-    0 4px 14px -4px var(--card-glow);
+    0 22px 56px -14px var(--card-glow),
+    0 6px 18px -4px var(--card-glow);
 }
 
 .glow-card::before {

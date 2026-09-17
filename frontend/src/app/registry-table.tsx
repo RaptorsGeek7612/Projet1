@@ -61,13 +61,23 @@ function CopyableAddress({ address }: { address: string }) {
   );
 }
 
-function Amount({ value, symbol, color }: { value: string; symbol: string; color?: string }) {
+function Amount({
+  value,
+  symbol,
+  color,
+  unitColor,
+}: {
+  value: string;
+  symbol: string;
+  color?: string;
+  unitColor?: string;
+}) {
   return (
     <span className="inline-flex items-baseline gap-1">
       <span className="font-display tabular text-[0.95rem] font-semibold" style={{ color: color ?? "var(--text-primary)" }}>
         {value}
       </span>
-      <span className="text-[0.65rem] font-medium tracking-wide" style={{ color: "var(--text-muted)" }}>
+      <span className="text-[0.65rem] font-medium tracking-wide" style={{ color: unitColor ?? "var(--text-muted)" }}>
         {symbol}
       </span>
     </span>
@@ -92,10 +102,15 @@ function Row({ holder, decimals, symbol }: { holder: Holder; decimals: number; s
         {frozen ? (
           <span
             className="inline-flex items-center gap-1 rounded-full px-2.5 py-1"
-            style={{ background: "var(--accent-soft)" }}
+            style={{ background: "var(--chip-warning-bg)" }}
             title="Solde gelé partiellement par un agent (freezePartialTokens) : bloqué au transfert, mais toujours comptabilisé dans le solde total."
           >
-            <Amount value={formatTokenAmount(holder.frozenBalance, decimals)} symbol={symbol} color="var(--status-warning)" />
+            <Amount
+              value={formatTokenAmount(holder.frozenBalance, decimals)}
+              symbol={symbol}
+              color="var(--chip-warning-text)"
+              unitColor="var(--chip-warning-text)"
+            />
           </span>
         ) : (
           <span className="text-xs" style={{ color: "var(--text-muted)" }}>
