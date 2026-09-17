@@ -141,17 +141,25 @@ ponder.on("Token:AddressFrozen", async ({ event, context }) => {
     txHash: event.transaction.hash,
   });
 
+  // Le contrat émet AddressFrozen même quand l'état ne change pas (un agent
+  // qui gèle une adresse déjà gelée). Sans ce garde-fou, frozenHolderCount
+  // dérive à chaque appel redondant au lieu de suivre une vraie transition.
+  const before = await context.db.find(schema.holder, { address: userAddress });
+  const wasFrozen = before?.isFrozen ?? false;
+
   await context.db
     .insert(schema.holder)
     .values({ address: userAddress, isFrozen })
     .onConflictDoUpdate(() => ({ isFrozen }));
 
-  await context.db
-    .insert(schema.tokenState)
-    .values({ address: token, frozenHolderCount: isFrozen ? 1 : 0 })
-    .onConflictDoUpdate((row: any) => ({
-      frozenHolderCount: Math.max(0, row.frozenHolderCount + (isFrozen ? 1 : -1)),
-    }));
+  if (wasFrozen !== isFrozen) {
+    await context.db
+      .insert(schema.tokenState)
+      .values({ address: token, frozenHolderCount: isFrozen ? 1 : 0 })
+      .onConflictDoUpdate((row: any) => ({
+        frozenHolderCount: Math.max(0, row.frozenHolderCount + (isFrozen ? 1 : -1)),
+      }));
+  }
 });
 
 ponder.on("Token:TokensFrozen", async ({ event, context }) => {
