@@ -513,10 +513,11 @@ contract Token is IToken, AgentRoleUpgradeable, TokenStorage {
      *  @dev See {IToken-setCompliance}.
      */
     function setCompliance(address _compliance) public override onlyOwner {
-        if (address(_tokenCompliance) != address(0)) {
-            _tokenCompliance.unbindToken(address(this));
-        }
+        IModularCompliance _oldCompliance = _tokenCompliance;
         _tokenCompliance = IModularCompliance(_compliance);
+        if (address(_oldCompliance) != address(0)) {
+            _oldCompliance.unbindToken(address(this));
+        }
         _tokenCompliance.bindToken(address(this));
         emit ComplianceAdded(_compliance);
     }

@@ -323,6 +323,8 @@ contract DVDTransferManager is Ownable {
             token2Contract.allowance(token2.counterpart, address(this)) >= token2.amount
             , "not enough allowance to transfer");
         TxFees memory fees = calculateFee(_transferID);
+        delete token1ToDeliver[_transferID];
+        delete token2ToDeliver[_transferID];
         if (fees.txFee1 != 0) {
             token1Contract.transferFrom(token1.counterpart, token2.counterpart, (token1.amount - fees.txFee1));
             token1Contract.transferFrom(token1.counterpart, fees.fee1Wallet, fees.txFee1);
@@ -337,8 +339,6 @@ contract DVDTransferManager is Ownable {
         if (fees.txFee2 == 0) {
             token2Contract.transferFrom(token2.counterpart, token1.counterpart, token2.amount);
         }
-        delete token1ToDeliver[_transferID];
-        delete token2ToDeliver[_transferID];
         emit DVDTransferExecuted(_transferID);
     }
 

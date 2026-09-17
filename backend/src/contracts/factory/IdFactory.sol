@@ -93,6 +93,10 @@ contract IdFactory is IIdFactory, Ownable {
 
         address identity = _deployIdentity(oidSalt, _implementationAuthority, address(this));
 
+        _saltTaken[oidSalt] = true;
+        _userIdentity[_wallet] = identity;
+        _wallets[identity].push(_wallet);
+
         for (uint i = 0; i < _managementKeys.length; i++) {
             require(
                 _managementKeys[i] != keccak256(abi.encode(_wallet))
@@ -109,9 +113,6 @@ contract IdFactory is IIdFactory, Ownable {
             1
         );
 
-        _saltTaken[oidSalt] = true;
-        _userIdentity[_wallet] = identity;
-        _wallets[identity].push(_wallet);
         emit WalletLinked(_wallet, identity);
 
         return identity;

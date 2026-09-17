@@ -141,6 +141,7 @@ contract TREXFactory is ITREXFactory, Ownable {
                 _tokenDetails.decimals,
                 _tokenDetails.ONCHAINID
             ));
+        tokenDeployed[_salt] = address(token);
         if(_tokenDetails.ONCHAINID == address(0)) {
             address _tokenID = IIdFactory(_idFactory).createTokenIdentity(address(token), _tokenDetails.owner, _salt);
             token.setOnchainID(_tokenID);
@@ -167,7 +168,6 @@ contract TREXFactory is ITREXFactory, Ownable {
                 mc.callModuleFunction(_tokenDetails.complianceSettings[i], _tokenDetails.complianceModules[i]);
             }
         }
-        tokenDeployed[_salt] = address(token);
         (Ownable(address(token))).transferOwnership(_tokenDetails.owner);
         (Ownable(address(ir))).transferOwnership(_tokenDetails.owner);
         (Ownable(address(tir))).transferOwnership(_tokenDetails.owner);
