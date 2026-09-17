@@ -15,9 +15,16 @@ import { countryName } from "../countries";
 
 const app = new Hono();
 
+/** Borne un `limit` de query string : entier positif, plafonné, sinon la valeur par défaut. */
+function parseLimit(raw: string | undefined, fallback: number, max = 1000) {
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n <= 0) return fallback;
+  return Math.min(n, max);
+}
+
 /** Le registre des porteurs, trié par encours. La vue par défaut. */
 app.get("/registry", async (c) => {
-  const limit = Number(c.req.query("limit") ?? 200);
+  const limit = parseLimit(c.req.query("limit"), 200);
   const rows = await db
     .select()
     .from(schema.holder)
@@ -144,7 +151,7 @@ app.get("/audit/agent-actions", async (c) => {
     .select()
     .from(schema.agentAction)
     .orderBy(desc(schema.agentAction.timestamp))
-    .limit(Number(c.req.query("limit") ?? 100));
+    .limit(parseLimit(c.req.query("limit"), 100));
 
   return c.json(
     rows.map((a) => ({
