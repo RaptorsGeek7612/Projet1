@@ -77,6 +77,11 @@ abstract contract AbstractModuleUpgradeable is IModule, Initializable, OwnableUp
     bytes32 private constant _ABSTRACT_MODULE_STORAGE_LOCATION =
         0xf6cc97de1266c180cd39f3b311632644143ce7873d2927755382ad4b39e8ae00;
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
     /**
      * @dev Throws if `_compliance` is not a bound compliance contract address.
      */
