@@ -1,74 +1,101 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ComponentType } from "react";
 import { useQuery } from "@tanstack/react-query";
+import * as Flags from "country-flag-icons/react/3x2";
 import { fetchRegistry, fetchStats, formatTokenAmount, type Holder, REGISTRY_API_URL } from "@/lib/registry";
+import { countryAlpha2 } from "@/lib/countries";
 
-const COUNTRY_COLORS = ["var(--cat-1)", "var(--cat-2)", "var(--cat-3)"];
+function CountryBadge({ country, countryName }: { country: number | null; countryName: string | null }) {
+  const alpha2 = countryAlpha2(country);
+  const FlagIcon = alpha2 ? (Flags as Record<string, ComponentType<{ className?: string }>>)[alpha2] : undefined;
 
-function countryColor(country: number | null) {
-  if (country == null) return "var(--text-muted)";
-  return COUNTRY_COLORS[country % COUNTRY_COLORS.length];
+  if (!FlagIcon || !countryName) {
+    return (
+      <span className="text-xs" style={{ color: "var(--status-warning)" }}>
+        Pays inconnu
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center gap-2 text-xs" style={{ color: "var(--text-secondary)" }}>
+      <FlagIcon className="h-3 w-4.5 rounded-[2px] shadow-[0_0_0_1px_var(--border)]" />
+      {countryName}
+    </span>
+  );
 }
 
 function CopyableAddress({ address }: { address: string }) {
   const [copied, setCopied] = useState(false);
 
   return (
-    <button
-      onClick={async () => {
-        try {
-          await navigator.clipboard.writeText(address);
-          setCopied(true);
-          setTimeout(() => setCopied(false), 1200);
-        } catch {
-          // clipboard indisponible (contexte non sécurisé, permission refusée) : pas bloquant
-        }
-      }}
-      className="group inline-flex items-center gap-1.5 font-mono text-xs tabular"
-      style={{ color: "var(--text-primary)" }}
-      title={address}
-    >
-      {address.slice(0, 6)}…{address.slice(-4)}
-      <span
-        className="opacity-0 transition-opacity group-hover:opacity-100"
+    <span className="inline-flex items-center gap-1.5">
+      <a
+        href={`https://sepolia.etherscan.io/address/${address}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="font-mono text-xs tabular hover:underline"
+        style={{ color: "var(--text-primary)" }}
+        title="Ouvrir sur Etherscan (Sepolia)"
+      >
+        {address.slice(0, 6)}…{address.slice(-4)}
+      </a>
+      <button
+        onClick={async () => {
+          try {
+            await navigator.clipboard.writeText(address);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1200);
+          } catch {
+            // clipboard indisponible (contexte non sécurisé, permission refusée) : pas bloquant
+          }
+        }}
+        className="text-xs transition-colors"
         style={{ color: copied ? "var(--status-good)" : "var(--text-muted)" }}
+        title="Copier l'adresse"
       >
         {copied ? "✓" : "⧉"}
+      </button>
+    </span>
+  );
+}
+
+function Amount({ value, symbol, color }: { value: string; symbol: string; color?: string }) {
+  return (
+    <span className="inline-flex items-baseline gap-1">
+      <span className="font-display tabular text-[0.95rem] font-semibold" style={{ color: color ?? "var(--text-primary)" }}>
+        {value}
       </span>
-    </button>
+      <span className="text-[0.65rem] font-medium tracking-wide" style={{ color: "var(--text-muted)" }}>
+        {symbol}
+      </span>
+    </span>
   );
 }
 
 function Row({ holder, decimals, symbol }: { holder: Holder; decimals: number; symbol: string }) {
   const frozen = holder.frozenBalance !== "0";
+
   return (
     <tr className="border-b transition-colors hover:bg-[var(--surface-2)]" style={{ borderColor: "var(--border)" }}>
       <td className="py-3 pr-4">
         <CopyableAddress address={holder.address} />
       </td>
       <td className="py-3 pr-4">
-        {holder.countryName ? (
-          <span className="inline-flex items-center gap-1.5 text-xs" style={{ color: "var(--text-secondary)" }}>
-            <span className="h-1.5 w-1.5 rounded-full" style={{ background: countryColor(holder.country) }} />
-            {holder.countryName}
-          </span>
-        ) : (
-          <span className="text-xs" style={{ color: "var(--status-warning)" }}>
-            Pays inconnu
-          </span>
-        )}
+        <CountryBadge country={holder.country} countryName={holder.countryName} />
       </td>
-      <td className="py-3 pr-4 tabular text-sm" style={{ color: "var(--text-primary)" }}>
-        {formatTokenAmount(holder.balance, decimals)} {symbol}
+      <td className="py-3 pr-4">
+        <Amount value={formatTokenAmount(holder.balance, decimals)} symbol={symbol} />
       </td>
       <td className="py-3 pr-4">
         {frozen ? (
           <span
-            className="tabular inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
-            style={{ background: "var(--accent-soft)", color: "var(--status-warning)" }}
+            className="inline-flex items-center gap-1 rounded-full px-2.5 py-1"
+            style={{ background: "var(--accent-soft)" }}
+            title="Solde gelé partiellement par un agent (freezePartialTokens) : bloqué au transfert, mais toujours comptabilisé dans le solde total."
           >
-            {formatTokenAmount(holder.frozenBalance, decimals)} {symbol}
+            <Amount value={formatTokenAmount(holder.frozenBalance, decimals)} symbol={symbol} color="var(--status-warning)" />
           </span>
         ) : (
           <span className="text-xs" style={{ color: "var(--text-muted)" }}>
@@ -76,8 +103,8 @@ function Row({ holder, decimals, symbol }: { holder: Holder; decimals: number; s
           </span>
         )}
       </td>
-      <td className="py-3 tabular text-sm font-medium" style={{ color: "var(--accent-2)" }}>
-        {formatTokenAmount(holder.transferable, decimals)} {symbol}
+      <td className="py-3">
+        <Amount value={formatTokenAmount(holder.transferable, decimals)} symbol={symbol} color="var(--accent-2)" />
       </td>
     </tr>
   );
@@ -110,8 +137,7 @@ export function RegistryTable() {
   if (error) {
     return (
       <p className="text-sm" style={{ color: "var(--status-critical)" }}>
-        Impossible de joindre l&apos;indexeur ({REGISTRY_API_URL}). Vérifiez que le backend tourne (
-        <code>pnpm dev</code> dans <code>backend/</code>).
+        Impossible de joindre l&apos;indexeur ({REGISTRY_API_URL}). Vérifiez qu&apos;il tourne bien.
       </p>
     );
   }

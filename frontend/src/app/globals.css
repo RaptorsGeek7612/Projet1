@@ -1,8 +1,11 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #f7f8fb;
-  --surface: #ffffff;
+  --bg-1: #eeeef8;
+  --bg-2: #dcdeed;
+  --bg: var(--bg-2);
+  --surface: #f3e6c9;
+  --surface-tint: #e0c48a;
   --surface-2: #f1f3f8;
   --border: rgba(11, 15, 25, 0.09);
   --text-primary: #0b0f19;
@@ -22,14 +25,22 @@
   --cat-2: #eb6834;
   --cat-3: #1baf7a;
 
-  --glow-1: rgba(79, 70, 229, 0.16);
-  --glow-2: rgba(12, 166, 120, 0.12);
+  --glow-1: rgba(79, 70, 229, 0.14);
+  --glow-2: rgba(12, 166, 120, 0.1);
+  --glow-3: rgba(168, 85, 247, 0.08);
+  --grid-line: rgba(11, 15, 25, 0.055);
+  --grid-dot: rgba(11, 15, 25, 0.09);
+  --card-glow: rgba(79, 70, 229, 0.2);
+  --card-edge: rgba(79, 70, 229, 0.4);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #060810;
-    --surface: #0d111c;
+    --bg-1: #0c0e1e;
+    --bg-2: #05060d;
+    --bg: var(--bg-2);
+    --surface: #141833;
+    --surface-tint: #202555;
     --surface-2: #131829;
     --border: rgba(255, 255, 255, 0.08);
     --text-primary: #f4f5f8;
@@ -49,8 +60,13 @@
     --cat-2: #d95926;
     --cat-3: #199e70;
 
-    --glow-1: rgba(129, 140, 248, 0.18);
-    --glow-2: rgba(52, 211, 153, 0.1);
+    --glow-1: rgba(129, 140, 248, 0.2);
+    --glow-2: rgba(52, 211, 153, 0.12);
+    --glow-3: rgba(196, 140, 255, 0.12);
+    --grid-line: rgba(255, 255, 255, 0.045);
+    --grid-dot: rgba(255, 255, 255, 0.09);
+    --card-glow: rgba(129, 140, 248, 0.26);
+    --card-edge: rgba(129, 140, 248, 0.45);
   }
 }
 
@@ -59,6 +75,7 @@
   --color-foreground: var(--text-primary);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-display);
 }
 
 * {
@@ -66,7 +83,8 @@
 }
 
 body {
-  background: var(--bg);
+  background: linear-gradient(165deg, var(--bg-1) 0%, var(--bg-2) 70%);
+  background-attachment: fixed;
   color: var(--text-primary);
   font-family: var(--font-geist-sans), system-ui, -apple-system, "Segoe UI", sans-serif;
 }
@@ -89,4 +107,143 @@ body {
 
 .pulse-dot {
   animation: pulse-dot 2s ease-in-out infinite;
+}
+
+/**
+ * Fond "ledger" : une trame de points fins (le grand livre, maillé) sous une
+ * aurore de trois halos (indigo / émeraude / violet) qui respire lentement en
+ * position ET en intensité, plus une vignette pour ramener l'attention vers
+ * le contenu. La constellation animée (network-background.tsx) vient au-dessus.
+ */
+.institutional-bg {
+  background-image:
+    radial-gradient(circle at 1px 1px, var(--grid-dot) 1px, transparent 0),
+    radial-gradient(52rem 38rem at 8% -10%, var(--glow-1), transparent 60%),
+    radial-gradient(46rem 34rem at 105% 0%, var(--glow-2), transparent 55%),
+    radial-gradient(44rem 40rem at 50% 105%, var(--glow-3), transparent 60%);
+  background-size: 26px 26px, auto, auto, auto;
+  background-position: 0 0, 0 0, 0 0, 0 0;
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat;
+  animation: drift 22s ease-in-out infinite alternate;
+}
+
+.institutional-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120% 90% at 50% 0%, transparent 40%, var(--bg) 90%);
+}
+
+@keyframes drift {
+  0% {
+    background-position: 0 0, 0% 0%, 0% 0%, 0% 0%;
+  }
+  33% {
+    background-position: 0 0, 4% 5%, -5% 3%, 3% -4%;
+  }
+  66% {
+    background-position: 0 0, -3% 6%, 4% -3%, -4% -2%;
+  }
+  100% {
+    background-position: 0 0, 3% -4%, -4% -5%, 5% 3%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .institutional-bg {
+    animation: none;
+  }
+}
+
+/* Constellation : nœuds qui respirent, connexions parcourues par un flux. */
+@keyframes node-pulse {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.15);
+  }
+}
+
+@keyframes dash-flow {
+  to {
+    stroke-dashoffset: -200;
+  }
+}
+
+.constellation-node {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: node-pulse 5s ease-in-out infinite;
+}
+
+.constellation-edge {
+  stroke-dasharray: 3 14;
+  animation: dash-flow 6s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .constellation-node,
+  .constellation-edge {
+    animation: none;
+  }
+}
+
+/* Logo : le nœud vérifié respire, le flux circule vers les porteurs. */
+@keyframes logo-glow {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.35);
+  }
+}
+
+.logo-node-glow {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: logo-glow 2.6s ease-in-out infinite;
+}
+
+.logo-spoke {
+  stroke-dasharray: 2 5;
+  animation: dash-flow 2.4s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo-node-glow,
+  .logo-spoke {
+    animation: none;
+  }
+}
+
+/**
+ * Halo homogène pour les cartes de contenu (tuiles KPI, carte du registre) :
+ * une lueur ambiante douce sous la carte + un filet de lumière en haut,
+ * jamais sur les éléments d'interface secondaires (badges, boutons, chips).
+ */
+.glow-card {
+  position: relative;
+  isolation: isolate;
+  background: linear-gradient(160deg, var(--surface) 0%, var(--surface-tint) 100%);
+  box-shadow:
+    0 0 0 1px var(--border),
+    0 18px 48px -16px var(--card-glow),
+    0 4px 14px -4px var(--card-glow);
+}
+
+.glow-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  border-radius: inherit;
+  background: linear-gradient(90deg, transparent, var(--card-edge), transparent);
+  opacity: 0.7;
 }

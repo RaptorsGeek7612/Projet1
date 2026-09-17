@@ -23,7 +23,11 @@ export function WalletChip() {
       <button
         onClick={() => disconnect()}
         className="group flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors"
-        style={{ borderColor: "var(--border)", background: "var(--surface)", color: "var(--text-primary)" }}
+        style={{
+          borderColor: "var(--border)",
+          background: "linear-gradient(160deg, var(--surface) 0%, var(--surface-tint) 100%)",
+          color: "var(--text-primary)",
+        }}
       >
         <span
           className="h-1.5 w-1.5 rounded-full pulse-dot"
