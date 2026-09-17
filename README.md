@@ -15,6 +15,7 @@ Les deux sont des projets pnpm indépendants (workspace propre à chacun), dépl
 
 - **Tu veux utiliser l'interface** (agent de conformité, opérationnel, investisseur) : lis [`GUIDE-UTILISATEUR.md`](GUIDE-UTILISATEUR.md).
 - **Tu veux faire tourner ou modifier le projet** : lis [`backend/README.md`](backend/README.md) (indexeur, API, déploiement des contrats de test) puis [`frontend/README.md`](frontend/README.md) (dashboard).
+- **Tu veux contribuer** (PR, checks à passer, convention de commits) : lis [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## Démarrage rapide (local)
 
