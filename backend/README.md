@@ -107,6 +107,7 @@ npm run test:contracts   # comportement des contrats — nœud Hardhat local, ~5
 - **Conformité KYC réelle** en place (voir « Conformité KYC réelle ») : `isVerified()` dépend d'un vrai claim signé, plus d'un simple enregistrement d'identité
 - 18 tests unitaires + 5 tests de contrats, tous verts (`npm test`, `npm run test:contracts`)
 - CI GitHub Actions (`.github/workflows/ci.yml`) : typecheck + compile + tests, backend et frontend
+- Déploiement Railway (`backend-app`) connecté au repo GitHub (branche `main`, root directory `backend`) : tout push sur `main` redéploie automatiquement
 - Les agrégats par pays sont maintenus au fil de l'eau ; sur un registre chargé, un job de recalcul périodique serait plus sûr qu'une accumulation de deltas
 
 ## Suites possibles
