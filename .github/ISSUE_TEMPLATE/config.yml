@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Guide utilisateur
+    url: https://github.com/RaptorsGeek7612/registre-porteurs-trex/blob/main/GUIDE-UTILISATEUR.md
+    about: Question sur l'usage de l'interface (dashboard) plutôt qu'un bug ou une évolution

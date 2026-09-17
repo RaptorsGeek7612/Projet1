@@ -1,0 +1,39 @@
+name: Demande de fonctionnalité
+description: Proposer une évolution de l'indexeur, de l'API ou du dashboard
+labels: ["enhancement"]
+body:
+  - type: dropdown
+    id: zone
+    attributes:
+      label: Zone concernée
+      options:
+        - backend (indexeur Ponder / API)
+        - backend (contrats Solidity)
+        - frontend (dashboard)
+        - CI / déploiement
+        - documentation
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Quel besoin ça couvre
+      description: Quelle question un émetteur/opérationnel/investisseur ne peut pas répondre aujourd'hui ?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposition
+      description: Comment tu envisages de le résoudre (nouvelle route, nouvelle vue, etc.)
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives envisagées
+    validations:
+      required: false
