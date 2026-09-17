@@ -1,5 +1,7 @@
 import { ponder } from "ponder:registry";
 import schema from "ponder:schema";
+import { decodeFunctionData } from "viem";
+import { IdentityRegistryAbi } from "../abis/trex";
 
 const ZERO = "0x0000000000000000000000000000000000000000" as const;
 
@@ -49,6 +51,9 @@ async function applyDelta(
     })
     .onConflictDoUpdate((row: any) => ({
       balance: row.balance + delta,
+      // Le row peut déjà exister (identité enregistrée avant tout mouvement) :
+      // sans ce fallback, firstSeenAt resterait null pour ces porteurs.
+      firstSeenAt: row.firstSeenAt ?? timestamp,
       lastActivityAt: timestamp,
       transferCount: row.transferCount + 1,
     }));
@@ -251,6 +256,30 @@ ponder.on("Token:Unpaused", async ({ event, context }) => {
 // IdentityRegistry
 // ---------------------------------------------------------------------------
 
+/**
+ * Décode le calldata d'un appel à registerIdentity() ou batchRegisterIdentity()
+ * pour en extraire le pays de `investorAddress`, faute d'événement qui le porte.
+ * Retourne null si le calldata ne correspond à aucune des deux signatures
+ * (ex. appel via un contrat intermédiaire dont on ne peut pas décoder l'entrée).
+ */
+function decodeRegisteredCountry(input: `0x${string}`, investorAddress: `0x${string}`): number | null {
+  try {
+    const decoded = decodeFunctionData({ abi: IdentityRegistryAbi, data: input });
+    if (decoded.functionName === "registerIdentity") {
+      const [, , country] = decoded.args;
+      return Number(country);
+    }
+    if (decoded.functionName === "batchRegisterIdentity") {
+      const [addresses, , countries] = decoded.args;
+      const index = addresses.findIndex((a) => a.toLowerCase() === investorAddress.toLowerCase());
+      return index === -1 ? null : Number(countries[index]);
+    }
+  } catch {
+    // calldata d'un appel qu'on ne sait pas décoder (ex. via un contrat intermédiaire)
+  }
+  return null;
+}
+
 ponder.on("IdentityRegistry:IdentityRegistered", async ({ event, context }) => {
   const { investorAddress, identity } = event.args;
   await context.db.insert(schema.identityEvent).values({
@@ -266,6 +295,14 @@ ponder.on("IdentityRegistry:IdentityRegistered", async ({ event, context }) => {
     .insert(schema.holder)
     .values({ address: investorAddress, identity })
     .onConflictDoUpdate(() => ({ identity }));
+
+  // registerIdentity()/batchRegisterIdentity() écrivent le pays dans le storage
+  // sans jamais l'émettre en événement (seul IdentityRegistered(address,identity)
+  // sort). Le calldata de la transaction est la seule source disponible.
+  const country = decodeRegisteredCountry(event.transaction.input, investorAddress);
+  if (country != null) {
+    await setHolderCountry(context, investorAddress, country);
+  }
 });
 
 ponder.on("IdentityRegistry:IdentityRemoved", async ({ event, context }) => {
@@ -287,25 +324,13 @@ ponder.on("IdentityRegistry:IdentityRemoved", async ({ event, context }) => {
     .onConflictDoUpdate(() => ({ identity: null }));
 });
 
-ponder.on("IdentityRegistry:CountryUpdated", async ({ event, context }) => {
-  const { investorAddress, country } = event.args;
-  const c = Number(country);
-
-  await context.db.insert(schema.identityEvent).values({
-    id: eventId(event as any),
-    kind: "countryUpdated",
-    investor: investorAddress,
-    country: c,
-    blockNumber: Number(event.block.number),
-    timestamp: Number(event.block.timestamp),
-    txHash: event.transaction.hash,
-  });
-
-  const before = await context.db.find(schema.holder, { address: investorAddress });
+/** Affecte (ou déplace) le pays d'un porteur et tient les agrégats countryStat à jour. */
+async function setHolderCountry(context: any, address: `0x${string}`, c: number) {
+  const before = await context.db.find(schema.holder, { address });
 
   await context.db
     .insert(schema.holder)
-    .values({ address: investorAddress, country: c })
+    .values({ address, country: c })
     .onConflictDoUpdate(() => ({ country: c }));
 
   // Déplacer le porteur d'un pays à l'autre dans les agrégats.
@@ -327,4 +352,21 @@ ponder.on("IdentityRegistry:CountryUpdated", async ({ event, context }) => {
         balance: row.balance + before.balance,
       }));
   }
+}
+
+ponder.on("IdentityRegistry:CountryUpdated", async ({ event, context }) => {
+  const { investorAddress, country } = event.args;
+  const c = Number(country);
+
+  await context.db.insert(schema.identityEvent).values({
+    id: eventId(event as any),
+    kind: "countryUpdated",
+    investor: investorAddress,
+    country: c,
+    blockNumber: Number(event.block.number),
+    timestamp: Number(event.block.timestamp),
+    txHash: event.transaction.hash,
+  });
+
+  await setHolderCountry(context, investorAddress, c);
 });

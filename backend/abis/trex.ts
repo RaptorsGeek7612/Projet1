@@ -120,4 +120,29 @@ export const IdentityRegistryAbi = [
       { name: "country", type: "uint16", indexed: true },
     ],
   },
+  // registerIdentity() écrit le pays dans le storage mais n'émet aucun événement
+  // qui le porte — seul IdentityRegistered(address,identity) est émis. Le handler
+  // décode donc le calldata de la transaction pour récupérer `_country`.
+  {
+    type: "function",
+    name: "registerIdentity",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "_userAddress", type: "address" },
+      { name: "_identity", type: "address" },
+      { name: "_country", type: "uint16" },
+    ],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "batchRegisterIdentity",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "_userAddresses", type: "address[]" },
+      { name: "_identities", type: "address[]" },
+      { name: "_countries", type: "uint16[]" },
+    ],
+    outputs: [],
+  },
 ] as const;

@@ -2,3 +2,7 @@ node_modules/
 .ponder/
 generated/
 .env.local
+.env
+artifacts/
+cache/
+deployed.json
