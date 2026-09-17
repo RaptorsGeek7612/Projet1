@@ -1,11 +1,19 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useAccount, useConnect, useDisconnect } from "wagmi";
+import { RegistryTable } from "./registry-table";
 
 export default function Home() {
   const { address, isConnected } = useAccount();
   const { connect, connectors } = useConnect();
   const { disconnect } = useDisconnect();
+
+  // wagmi restaure la connexion précédente depuis le stockage local, ce qui
+  // diffère forcément du rendu serveur (jamais connecté) : sans ce garde-fou,
+  // React lève un mismatch d'hydratation sur ce bloc.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-8 bg-zinc-50 px-6 font-sans dark:bg-black">
@@ -19,7 +27,7 @@ export default function Home() {
         </p>
       </div>
 
-      {isConnected ? (
+      {!mounted ? null : isConnected ? (
         <div className="flex flex-col items-center gap-3">
           <p className="font-mono text-sm text-zinc-700 dark:text-zinc-300">
             {address}
@@ -44,6 +52,8 @@ export default function Home() {
           ))}
         </div>
       )}
+
+      <RegistryTable />
     </div>
   );
 }
