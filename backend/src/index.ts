@@ -206,11 +206,21 @@ ponder.on("Token:RecoverySuccess", async ({ event, context }) => {
   // Le transfert de solde arrive par l'événement Transfer associé.
   // Ici on ne conserve que le lien entre les deux portefeuilles, sans quoi
   // le registre montre un porteur sorti et un porteur entré sans rapport.
+  // Le pays doit aussi migrer : sans ça, le nouveau portefeuille ressort
+  // comme une anomalie "sans pays" alors que son identité est déjà connue.
+  const lost = await context.db.find(schema.holder, { address: lostWallet });
+
   await context.db
     .insert(schema.holder)
-    .values({ address: newWallet, identity: investorOnchainID, recoveredFrom: lostWallet })
+    .values({
+      address: newWallet,
+      identity: investorOnchainID,
+      country: lost?.country,
+      recoveredFrom: lostWallet,
+    })
     .onConflictDoUpdate(() => ({
       identity: investorOnchainID,
+      country: lost?.country,
       recoveredFrom: lostWallet,
     }));
 });
