@@ -93,7 +93,7 @@ export default function Home() {
         className="border-t px-6 py-4 text-center text-xs sm:px-10"
         style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}
       >
-        Registre reconstitué depuis la chaîne — aucune donnée interpolée ni estimée.
+        Registre reconstitué depuis la chaîne. Aucune donnée interpolée, aucune donnée estimée.
       </footer>
     </div>
   );
